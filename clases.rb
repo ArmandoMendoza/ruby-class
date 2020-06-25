@@ -25,32 +25,58 @@ class OpenFile
   def initialize(file)
     @file = file
     @data = []
+    @headers = []
+  end
+
+  def headers
+    @headers.map(&:chomp).map(&:to_sym)
   end
 
   def fetch_data
     n = 0
-    headers = []
     File.foreach(file) do |line| 
       if n == 0 
-        headers = line.split(",")
+        @headers = line.split(",")
       else
         values = line.split(",")
         set_data(headers, values)
       end
       n += 1
     end
-    @data
+    data
   end
 
   def add_data(hsh)
+    fetch_data
+    
+    hsh.keys.each do |key| 
+      unless headers.include?(key)
+        raise "Hash invalido: Llave #{key} +"
+      end
+    end
+
+    values = []
+    headers.each do |key|
+      values << hsh.fetch(key, "")
+    end
+    
+    string = values.join(",")
+
+    write(string)
   end
 
   private
 
+  def write(string)
+    File.open(file, "a") do |f|
+      f.puts string
+    end
+  end
+
   def set_data(headers, values)
     hsh = { }
     headers.each_with_index do |key, index|
-      hsh[key.chomp.to_sym] = values[index].chomp
+      hsh[key] = values[index].chomp
     end
     @data << hsh    
   end
@@ -69,10 +95,9 @@ class Person < Model
 end
 
 of = OpenFile.new("user.csv")
-of.add_data({name: "Mario", age: 50})
 
-user = User.new({name: "Mario", age: 50})
-user.save
+hsh = {age: 50, name: "Mario"}
+puts of.add_data(hsh)
 
 # BD = [
 #   { name: "Armando", age: 40 },
